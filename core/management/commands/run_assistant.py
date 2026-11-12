@@ -48,55 +48,68 @@ from core.response_analysis import (
 )
 
 
-CANCEL_ACTION_WORDS = ("скасуй", "скасувати", "скасовую", "відміна", "відміни", "відмінити")
+import re
+
+CANCEL_ACTION_WORDS = (
+    "скасуй", "скасувати", "скасовую", "відміна", "відміни", "відмінити",
+    "cancel", "abort", "dismiss"
+)
 APP_COMMAND_PATTERN = re.compile(
     r"\b(?P<verb>відкрий|відкрити|відкривай|відкривати|"
-    r"закрий|закрити|закривай|закривати)\b",
+    r"закрий|закрити|закривай|закривати|"
+    r"open|close)\b",
     re.IGNORECASE,
 )
 CLOSE_EXPLORER_PATTERN = re.compile(
-    r"\b(?:закрий|закрити|закривай|закривати|закриття)\b.*"
+    r"\b(?:закрий|закрити|закривай|закривати|закриття|close)\b.*"
     r"\b(?:провідник|провідника|explorer|file\s+explorer)\b",
     re.IGNORECASE,
 )
 CLOSE_FOLDER_PATTERN = re.compile(
-    r"\b(?:закрий|закрити|закривай|закривати)\s+"
-    r"(?:папку|каталог|директорію)\s+(?P<name>.+)$",
+    r"\b(?:закрий|закрити|закривай|закривати|close)\s+"
+    r"(?:папку|каталог|директорію|folder|directory)\s+(?P<name>.+)$",
     re.IGNORECASE,
 )
 NAVIGATE_BACK_PATTERN = re.compile(
     r"\b(?:назад(?:\s+(?:у|в)\s+провіднику|\s+по\s+папках)?|"
-    r"попередню\s+папку|перейти\s+назад\s+по\s+папках)\b",
+    r"попередню\s+папку|перейти\s+назад\s+по\s+папках|"
+    r"back|go\s+back)\b",
     re.IGNORECASE,
 )
 NAVIGATE_FORWARD_PATTERN = re.compile(
     r"\b(?:вперед(?:\s+(?:у|в)\s+провіднику|\s+по\s+папках)?|"
     r"перейти\s+вперед\s+по\s+папках|"
-    r"далі(?:\s+(?:у|в)\s+провіднику|\s+по\s+папках)?)\b",
+    r"далі(?:\s+(?:у|в)\s+провіднику|\s+по\s+папках)?|"
+    r"forward|go\s+forward|next)\b",
     re.IGNORECASE,
 )
 GENERIC_APP_PREFIX = re.compile(
-    r"^(?:програму|програма|програми|додаток|додатки|застосунок|застосунки)\b\s*",
+    r"^(?:програму|програма|програми|додаток|додатки|застосунок|застосунки|app|application)\b\s*",
     re.IGNORECASE,
 )
 SELECTION_NUMBER_WORDS = {
-    1: (
-        "один", "одна", "одне", "одну", "перший", "перша", "перше",
-        "першу", "первый", "первая", "первое",
+    1: ("один", "одна", "одне", "одну", "перший", "перша", "перше", "першу", "первый", "первая", "первое", "one", "first"
     ),
-    2: ("два", "дві", "двох", "другий", "друга", "друге", "второй", "вторая", "второе"),
-    3: ("три", "трьох", "третій", "третя", "третє", "третий", "третья", "третье"),
-    4: ("чотири", "чотирьох", "четвертий", "четверта", "четверте", "четвертый", "четвертая"),
-    5: (
-        "п'ять", "пять", "п'ятьох", "пятьох", "п'ятий", "пятий", "п'ята", "пята",
-        "п'яте", "пяте", "пятый", "пятая",
+    2: ("два", "дві", "двох", "другий", "друга", "друге", "второй", "вторая", "второе", "two", "second"
     ),
-    6: ("шість", "шесть", "шостий", "шоста", "шосте", "шестой", "шестая"),
-    7: ("сім", "сімох", "семь", "сьомий", "сьома", "седьмой", "седьмая"),
-    8: ("вісім", "восьми", "восемь", "восьмий", "восьма", "восьме", "восьмой", "восьмая"),
-    9: ("дев'ять", "девять", "дев'ятий", "девятий", "дев'ята", "девята", "девятый"),
-    10: ("десять", "десятий", "десята", "десяте", "десятый", "десятая"),
+    3: ("три", "трьох", "третій", "третя", "третє","третий", "третья", "третье", "three", "third"
+    ),
+    4: ("чотири", "чотирьох", "четвертий", "четверта", "четверте", "четвертый", "четвертая", "four", "fourth"
+    ),
+    5: ("п'ять", "пять", "п'ятьох", "пятьох", "п'ятий", "пятий", "п'ята", "пята","п'яте", "пяте", "пятый", "пятая", "five", "fifth"
+    ),
+    6: ("шість", "шесть", "шостий", "шоста", "шосте", "шестой", "шестая", "six", "sixth"
+    ),
+    7: ("сім", "сімох", "семь", "сьомий", "сьома", "седьмой", "седьмая", "seven", "seventh"
+    ),
+    8: ("вісім", "восьми", "восемь", "восьмий", "восьма", "восьме", "восьмой", "восьмая", "eight", "eighth"
+    ),
+    9: ("дев'ять", "девять", "дев'ятий", "девятий", "дев'ята", "девята", "девятый", "nine", "ninth"
+    ),
+    10: ("десять", "десятий", "десята", "десяте", "десятый", "десятая", "ten", "tenth"
+    ),
 }
+
 SELECTION_WORD_TO_NUMBER = {
     word: number
     for number, words in SELECTION_NUMBER_WORDS.items()
@@ -220,21 +233,25 @@ class Command(BaseCommand):
             if pending_file.get("awaiting_explorer_folder_name"):
                 self.handle_explorer_folder_name(text)
                 return
-        if any(keyword in lowered for keyword in ["пауза"]):
+        if any(keyword in lowered for keyword in ["пауза", "pause"]):
             self.pause_assistant()
             return
 
-        if any(keyword in lowered for keyword in ["продовж", "віднови"]):
+        if any(keyword in lowered for keyword in ["продовж", "віднови", "resume"]):
             self.resume_assistant()
             return
 
-        if any(keyword in lowered for keyword in ["зупини", "стоп", "вимкни"]):
+        if any(keyword in lowered for keyword in ["зупини", "стоп", "вимкни", "stop"]):
             self.stop_assistant()
             return
 
         if "привіт" in lowered:
             voicing_and_printing_answer("Привіт, рада тебе бачити!")
             return
+        elif "hello" in lowered or "hi" in lowered:
+            voicing_and_printing_answer("Hello, glad to see you!")
+            return
+
 
         # Убрал озвучивание
         if "додатки" in lowered:
@@ -284,14 +301,17 @@ class Command(BaseCommand):
 
     def handle_paused_command(self, text: str) -> None:
         lowered = text.strip().lower()
-        if any(keyword in lowered for keyword in ["продовж", "продовжуй", "продовжи", "віднови"]):
+        if any(keyword in lowered for keyword in ["продовж", "продовжуй", "продовжи", "віднови", "resume"]):
             self.resume_assistant()
-        elif any(keyword in lowered for keyword in ["зупини", "стоп", "вимкни", "вимкнись"]):
+        elif any(keyword in lowered for keyword in ["зупини", "стоп", "вимкни", "вимкнись", "stop" ]):
             self.stop_assistant()
 
     def report_recognized_command(self, text: str) -> None:
         if not self.paused:
-            self.stdout.write(f"Ви сказали: {text}")
+            if getattr(self, "is_english", False):
+                self.stdout.write(f"You said: {text}")
+            else:
+                self.stdout.write(f"Ви сказали: {text}")
 
     def process_recognized_command(self, text: str) -> None:
         if VOICE_ACTIVE.is_set():
@@ -323,13 +343,22 @@ class Command(BaseCommand):
         if pending_app is None and pending_file is None:
             return
 
-        if pending_file is not None:
-            voicing_and_printing_answer("Добре, скасувала відкриття.")
-        elif pending_app is not None:
-            action = "відкриття" if pending_app["is_open"] else "закриття"
-            voicing_and_printing_answer(
-                f"Добре, скасувала {action} програми {pending_app.get('name', '')}."
-            )
+        if getattr(self, "is_english", False):
+            if pending_file is not None:
+                voicing_and_printing_answer("Okay, opening canceled.")
+            elif pending_app is not None:
+                action = "opening" if pending_app["is_open"] else "closing"
+                voicing_and_printing_answer(
+                    f"Okay, canceled {action} of the {pending_app.get('name', '')} application."
+                )
+        else:
+            if pending_file is not None:
+                voicing_and_printing_answer("Добре, скасувала відкриття.")
+            elif pending_app is not None:
+                action = "відкриття" if pending_app["is_open"] else "закриття"
+                voicing_and_printing_answer(
+                    f"Добре, скасувала {action} програми {pending_app.get('name', '')}."
+                )
 
     def handle_unrecognized_audio(self) -> None:
         pending_file = getattr(self, "pending_file", None)
@@ -347,9 +376,14 @@ class Command(BaseCommand):
             return
 
         self.unrecognized_audio_prompted = True
-        self.stdout.write(
-            "Не розібрав голос. Введіть відповідь або «скасувати»."
-        )
+        if getattr(self, "is_english", False):
+            self.stdout.write(
+                "Could not understand the voice. Please type your response or 'cancel'."
+            )
+        else:
+            self.stdout.write(
+                "Не розібрав голос. Введіть відповідь або «скасувати»."
+            )
 
     def analyze_response(self, text, question=""):
         context = DialogContext(
@@ -367,13 +401,22 @@ class Command(BaseCommand):
             return
 
         pending_app = self.pending_app
-        question = f"Чи правильно я почув назву? Назва програми: {pending_app['name']}?"
+        is_eng = getattr(self, "is_english", False)
+        if is_eng:
+            question = f"Did I hear the name correctly? Application name: {pending_app['name']}?"
+        else:
+            question = f"Чи правильно я почув назву? Назва програми: {pending_app['name']}?"
         analysis = self.analyze_response(cleaned_text, question=question)
 
         if analysis.category == ResponseCategory.UNKNOWN:
-            voicing_and_printing_answer(
-                f"Не впевнена, чи правильно зрозуміла. {question} Відповідь: так або ні."
-            )
+            if is_eng:
+                voicing_and_printing_answer(
+                    f"Not sure if I understood correctly. {question} Answer: yes or no."
+                )
+            else:
+                voicing_and_printing_answer(
+                    f"Не впевнена, чи правильно зрозуміла. {question} Відповідь: так або ні."
+                )
             return
 
         self.response_repository.record_decision(
@@ -393,15 +436,25 @@ class Command(BaseCommand):
                 )
                 if candidate is not None:
                     self.pending_learning_candidate = candidate
-                    voicing_and_printing_answer(
-                        f"Запам'ятати фразу «{candidate.text}» як відмову? Підтвердіть дію: так або ні."
-                    )
+                    if is_eng:
+                        voicing_and_printing_answer(
+                            f"Remember the phrase '{candidate.text}' as a rejection? Confirm action: yes or no."
+                        )
+                    else:
+                        voicing_and_printing_answer(
+                            f"Запам'ятати фразу «{candidate.text}» як відмову? Підтвердіть дію: так або ні."
+                        )
                     return
 
             pending_app["awaiting_name"] = True
-            voicing_and_printing_answer(
-                "Добре, це не та програма. Уточніть точну назву."
-            )
+            if is_eng:
+                voicing_and_printing_answer(
+                    "Okay, that's not the application. Please specify the exact name."
+                )
+            else:
+                voicing_and_printing_answer(
+                    "Добре, це не та програма. Уточніть точну назву."
+                )
             return
 
         if analysis.source == ResponseSource.SEMANTIC:
@@ -410,8 +463,16 @@ class Command(BaseCommand):
                 category=analysis.category,
                 confidence=analysis.confidence,
             )
-            if candidate is not None:
-                self.pending_learning_candidate = candidate
+            if is_eng:
+                category_label = (
+                    "confirmation"
+                    if candidate.category == ResponseCategory.CONFIRMATION
+                    else "rejection"
+                )
+                voicing_and_printing_answer(
+                    f"Remember the phrase '{candidate.text}' as a {category_label}? Confirm action: yes or no."
+                )
+            else:
                 category_label = (
                     "підтвердження"
                     if candidate.category == ResponseCategory.CONFIRMATION
@@ -420,7 +481,7 @@ class Command(BaseCommand):
                 voicing_and_printing_answer(
                     f"Запам'ятати фразу «{candidate.text}» як {category_label}? Підтвердіть дію: так або ні."
                 )
-                return
+            return
 
         self._complete_pending_app()
 
@@ -434,11 +495,16 @@ class Command(BaseCommand):
         if command_match is not None:
             corrected_name = corrected_name[command_match.end():].strip()
         corrected_name = GENERIC_APP_PREFIX.sub("", corrected_name).strip()
+
+        is_eng = getattr(self, "is_english", False)
+
         if not corrected_name:
-            action = "відкрити" if pending_app["is_open"] else "закрити"
-            voicing_and_printing_answer(
-                f"Яку програму {action}? Вкажіть назву."
-            )
+            if is_eng:
+                action = "open" if pending_app["is_open"] else "close"
+                voicing_and_printing_answer(f"Which application to {action}? Please state the name.")
+            else:
+                action = "відкрити" if pending_app["is_open"] else "закрити"
+                voicing_and_printing_answer(f"Яку програму {action}? Вкажіть назву.")
             return
 
         is_open = pending_app["is_open"]
@@ -450,17 +516,21 @@ class Command(BaseCommand):
         candidate = self.pending_learning_candidate
         if candidate is None:
             return
-
-        question = (
-            f"Запам'ятати фразу «{candidate.text}»? "
-            "Підтвердіть дію: так або ні."
-        )
+        is_eng = getattr(self, "is_english", False)
+        if is_eng:
+            question = (f"Remember the phrase '{candidate.text}'? "
+                        "Confirm action: yes or no.")
+        else:
+            question = (f"Запам'ятати фразу «{candidate.text}»? "
+                        "Підтвердіть дію: так або ні.")
+            
         analysis = self.analyze_response(text, question=question)
 
         if analysis.category == ResponseCategory.UNKNOWN:
-            voicing_and_printing_answer(
-                f"Не впевнена, чи запам'ятовувати цю фразу. {question}"
-            )
+            if is_eng:
+                voicing_and_printing_answer(f"Not sure whether to remember this phrase. {question}")
+            else:
+                voicing_and_printing_answer(f"Не впевнена, чи запам'ятовувати цю фразу. {question}")
             return
 
         self.response_repository.record_decision(
@@ -472,16 +542,25 @@ class Command(BaseCommand):
         )
         if analysis.category == ResponseCategory.CONFIRMATION:
             self.response_learner.accept_candidate(candidate)
-            voicing_and_printing_answer(f"Запам'ятала фразу «{candidate.text}».")
+            if is_eng:
+                voicing_and_printing_answer(f"Remembered the phrase '{candidate.text}'.")
+            else:
+                voicing_and_printing_answer(f"Запам'ятала фразу «{candidate.text}».")
         else:
             self.response_learner.reject_candidate(candidate)
-            voicing_and_printing_answer("Добре, не буду її запам'ятовувати.")
+            if is_eng:
+                voicing_and_printing_answer("Okay, I will not remember it.")
+            else:
+                voicing_and_printing_answer("Добре, не буду її запам'ятовувати.")
 
         self.pending_learning_candidate = None
         if candidate.category == ResponseCategory.REJECTION:
             if self.pending_app is not None:
                 self.pending_app["awaiting_name"] = True
-            voicing_and_printing_answer("Уточніть назву програми.")
+            if is_eng:
+                voicing_and_printing_answer("Please clarify the application name.")
+            else:
+                voicing_and_printing_answer("Уточніть назву програми.")
             return
 
         self._complete_pending_app()
@@ -508,21 +587,37 @@ class Command(BaseCommand):
         if self.paused:
             return
         self.paused = True
-        run_voice("Асистент на паузі", wait=True)
-        self.stdout.write(self.style.WARNING("Асистент на паузі"))
+        
+        if getattr(self, "is_english", False):
+            run_voice("Assistant is paused", wait=True)
+            self.stdout.write(self.style.WARNING("Assistant is paused"))
+        else:
+            run_voice("Асистент на паузі", wait=True)
+            self.stdout.write(self.style.WARNING("Асистент на паузі"))
 
     def resume_assistant(self):
         if not self.paused:
             return
         self.paused = False
-        run_voice("Асистент продовжує роботу", wait=True)
-        self.stdout.write(self.style.SUCCESS("Асистент продовжив роботу"))
+        
+        if getattr(self, "is_english", False):
+            run_voice("Assistant resumed working", wait=True)
+            self.stdout.write(self.style.SUCCESS("Assistant resumed working"))
+        else:
+            run_voice("Асистент продовжує роботу", wait=True)
+            self.stdout.write(self.style.SUCCESS("Асистент продовжив роботу"))
 
     def stop_assistant(self):
-        run_voice("Асистент вимкнений", wait=True)
-        self.run = False
-        self.paused = False
-        self.stdout.write(self.style.WARNING("Асистент зупинено"))
+        if getattr(self, "is_english", False):
+            run_voice("Assistant is turned off", wait=True)
+            self.run = False
+            self.paused = False
+            self.stdout.write(self.style.WARNING("Assistant stopped"))
+        else:
+            run_voice("Асистент вимкнений", wait=True)
+            self.run = False
+            self.paused = False
+            self.stdout.write(self.style.WARNING("Асистент зупинено"))
 
     def handle_file_open(
         self,
@@ -531,6 +626,8 @@ class Command(BaseCommand):
         new_window: bool = False,
         current_folder: bool = False,
     ) -> None:
+        is_eng = getattr(self, "is_english", False)
+        
         if not target.strip():
             self.pending_file = {
                 "kind": kind,
@@ -538,8 +635,12 @@ class Command(BaseCommand):
                 "new_window": new_window,
                 "current_folder": current_folder,
             }
-            label = "файл" if kind == "file" else "папку"
-            voicing_and_printing_answer(f"Вкажіть {label}, який потрібно відкрити.")
+            if is_eng:
+                label = "file" if kind == "file" else "folder"
+                voicing_and_printing_answer(f"Please specify the {label} you want to open.")
+            else:
+                label = "файл" if kind == "file" else "папку"
+                voicing_and_printing_answer(f"Вкажіть {label}, який потрібно відкрити.")
             return
 
         folder = None
@@ -547,21 +648,35 @@ class Command(BaseCommand):
             try:
                 folder = get_active_explorer_path()
                 if folder is None or not os.path.isdir(folder):
-                    voicing_and_printing_answer(
-                        "Вкажіть потрібну папку у Провіднику та повторно надішліть запит."
-                    )
+                    if is_eng:
+                        voicing_and_printing_answer(
+                            "Please focus the required folder in File Explorer and resend the request."
+                        )
+                    else:
+                        voicing_and_printing_answer(
+                            "Вкажіть потрібну папку у Провіднику та повторно надішліть запит."
+                        )
                     return
                 targets = find_file_targets_in_folder(target, folder)
             except (OSError, RuntimeError, NotImplementedError) as error:
-                self.stdout.write(
-                    self.style.WARNING(f"Помилка читання поточної папки: {error}")
-                )
-                voicing_and_printing_answer(
-                    "Не вдалося визначити поточну папку Провідника."
-                )
+                if is_eng:
+                    self.stdout.write(
+                        self.style.WARNING(f"Error reading current folder: {error}")
+                    )
+                    voicing_and_printing_answer(
+                        "Could not determine the current File Explorer folder."
+                    )
+                else:
+                    self.stdout.write(
+                        self.style.WARNING(f"Помилка читання поточної папки: {error}")
+                    )
+                    voicing_and_printing_answer(
+                        "Не вдалося визначити поточну папку Провідника."
+                    )
                 return
         else:
             targets = find_file_targets(target, expected_kind=kind)
+            
         if not targets:
             roots = [folder] if folder is not None else None
             suggestions = (
@@ -575,20 +690,36 @@ class Command(BaseCommand):
                     "targets": suggestions,
                     "new_window": new_window,
                 }
-                self.prompt_file_selection(suggestions, prefix="Не знайшла точний збіг.")
+                if is_eng:
+                    self.prompt_file_selection(suggestions, prefix="Could not find an exact match.")
+                else:
+                    self.prompt_file_selection(suggestions, prefix="Не знайшла точний збіг.")
                 return
 
-            label = "файл" if kind == "file" else "папку"
-            if current_folder:
-                voicing_and_printing_answer(
-                    f"Не знайшла {label} «{target}» у поточній папці. "
-                    "Вкажіть іншу назву файла або повний шлях."
-                )
+            if is_eng:
+                label = "file" if kind == "file" else "folder"
+                if current_folder:
+                    voicing_and_printing_answer(
+                        f"Could not find the {label} '{target}' in the current folder. "
+                        "Please specify another name or the full path."
+                    )
+                else:
+                    voicing_and_printing_answer(
+                        f"Could not find the {label} '{target}' in standard folders. "
+                        "Please enter the full path or clarify the name."
+                    )
             else:
-                voicing_and_printing_answer(
-                    f"Не знайшла {label} «{target}» у стандартних папках. "
-                    "Введіть повний шлях або уточніть назву елемента."
-                )
+                label = "файл" if kind == "file" else "папку"
+                if current_folder:
+                    voicing_and_printing_answer(
+                        f"Не знайшла {label} «{target}» у поточній папці. "
+                        "Вкажіть іншу назву файла або повний шлях."
+                    )
+                else:
+                    voicing_and_printing_answer(
+                        f"Не знайшла {label} «{target}» у стандартних папках. "
+                        "Введіть повний шлях або уточніть назву елемента."
+                    )
             return
 
         if len(targets) > 1:
@@ -597,21 +728,35 @@ class Command(BaseCommand):
                 "targets": targets,
                 "new_window": new_window,
             }
-            self.prompt_file_selection(targets, prefix="Знайшла кілька точних збігів.")
+            if is_eng:
+                self.prompt_file_selection(targets, prefix="Found multiple exact matches.")
+            else:
+                self.prompt_file_selection(targets, prefix="Знайшла кілька точних збігів.")
             return
 
         self.open_file_target(targets[0], new_window=new_window)
 
     def prompt_file_selection(self, targets: list[str], prefix: str) -> None:
-        choices = "; ".join(
-            f"{index}. {os.path.basename(path)} у {os.path.basename(os.path.dirname(path))}"
-            for index, path in enumerate(targets, start=1)
-        )
-        self.stdout.write(f"Варіанти файлів і папок: {choices}")
-        voicing_and_printing_answer(
-            f"{prefix} Список варіантів виведено на екран. "
-            "Вкажіть номер потрібного варіанта або введіть «скасувати»."
-        )
+        is_eng = getattr(self, "is_english", False)
+        if is_eng:
+            choices = "; ".join(
+                f"{index}. {os.path.basename(path)} in {os.path.basename(os.path.dirname(path))}"
+                for index, path in enumerate(targets, start=1)
+            )
+            self.stdout.write(f"File and folder choices: {choices}")
+            voicing_and_printing_answer(
+                f"{prefix} The list of options is shown on the screen. "
+                "Please specify the option number or type 'cancel'."
+            )
+        else:
+            choices = "; ".join(
+                f"{index}. {os.path.basename(path)} у {os.path.basename(os.path.dirname(path))}"
+                for index, path in enumerate(targets, start=1)
+            )
+            self.stdout.write(f"Варіанти файлів і папок: {choices}")
+            voicing_and_printing_answer(f"{prefix} Список варіантів виведено на екран. "
+                                        "Вкажіть номер потрібного варіанта або введіть «скасувати»."
+            )
 
     def handle_file_selection(self, text: str) -> None:
         pending_file = getattr(self, "pending_file", None)
@@ -620,41 +765,72 @@ class Command(BaseCommand):
 
         targets = pending_file["targets"]
         selected_index = self.find_selection_index(text, len(targets))
+        is_eng = getattr(self, "is_english", False)
+        
         if selected_index is None:
-            voicing_and_printing_answer(
-                "Не розпізнала вибір. Вкажіть номер потрібного варіанта або скасуйте дію."
-            )
+            if is_eng:
+                voicing_and_printing_answer(
+                    "Selection not recognized. Please specify the option number or cancel the action."
+                )
+            else:
+                voicing_and_printing_answer(
+                    "Не розпізнала вибір. Вкажіть номер потрібного варіанта або скасуйте дію."
+                )
             return
 
         selected_target = targets[selected_index]
         pending_file["awaiting_selection"] = False
         pending_file["awaiting_selection_confirmation"] = True
         pending_file["selected_target"] = selected_target
-        voicing_and_printing_answer(
-            f"Ви обрали {os.path.basename(selected_target)}. "
-            "Підтвердіть відкриття: так або ні."
-        )
+        if is_eng:
+            voicing_and_printing_answer(
+                f"You selected {os.path.basename(selected_target)}. "
+                "Confirm opening: yes or no."
+            )
+        else:
+            voicing_and_printing_answer(
+                f"Ви обрали {os.path.basename(selected_target)}. "
+                "Підтвердіть відкриття: так або ні."
+            )
 
     def handle_file_selection_confirmation(self, text: str) -> None:
         pending_file = self.pending_file
         if pending_file is None:
             return
+        
+        is_eng = getattr(self, "is_english", False)
 
-        question = "Користувач підтверджує відкриття вибраного файла чи папки."
+        if is_eng:
+            question = "User confirms opening the selected file or folder."
+        else:
+            question = "Користувач підтверджує відкриття вибраного файла чи папки."
+            
         analysis = self.analyze_response(text, question=question)
         if analysis.category == ResponseCategory.UNKNOWN:
-            voicing_and_printing_answer(
-                "Не зрозуміла відповідь. Підтвердіть відкриття вибраного варіанта: так або ні."
-            )
+            if is_eng:
+                voicing_and_printing_answer(
+                    "Response not recognized. Confirm opening the selected option: yes or no."
+                )
+            else:
+                voicing_and_printing_answer(
+                    "Не зрозуміла відповідь. Підтвердіть відкриття вибраного варіанта: так або ні."
+                )
             return
         if analysis.category == ResponseCategory.REJECTION:
             pending_file["awaiting_selection"] = True
             pending_file["awaiting_selection_confirmation"] = False
             pending_file.pop("selected_target", None)
-            self.prompt_file_selection(
-                pending_file["targets"],
-                prefix="Добре, оберіть інший варіант.",
-            )
+            
+            if is_eng:
+                self.prompt_file_selection(
+                    pending_file["targets"],
+                    prefix="Okay, please choose another option.",
+                )
+            else:
+                self.prompt_file_selection(
+                    pending_file["targets"],
+                    prefix="Добре, оберіть інший варіант.",
+                )
             return
         if analysis.category != ResponseCategory.CONFIRMATION:
             return
@@ -694,68 +870,116 @@ class Command(BaseCommand):
             if path == "ms-settings:"
             else os.path.basename(path) or path
         )
+        is_eng = getattr(self, "is_english", False)
         try:
             if new_window:
                 open_target(path, new_window=True)
             else:
                 open_target(path)
         except (OSError, RuntimeError) as error:
-            self.stdout.write(self.style.WARNING(f"Помилка відкриття: {error}"))
-            voicing_and_printing_answer(f"Не вдалося відкрити {label}.")
+            if is_eng:
+                self.stdout.write(self.style.WARNING(f"Opening error: {error}"))
+                voicing_and_printing_answer(f"Failed to open {label}.")
+            else:
+                self.stdout.write(self.style.WARNING(f"Помилка відкриття: {error}"))
+                voicing_and_printing_answer(f"Не вдалося відкрити {label}.")
             return
-        voicing_and_printing_answer(f"Відкриваю {label}.")
-
-    def close_explorer(self) -> None:
-        try:
-            closed_windows = close_explorer_windows()
-        except (OSError, RuntimeError, NotImplementedError) as error:
-            self.stdout.write(self.style.WARNING(f"Помилка закриття Провідника: {error}"))
-            voicing_and_printing_answer("Не вдалося закрити вікна Провідника.")
-            return
-
-        if closed_windows:
-            voicing_and_printing_answer(
-                f"Закрила вікна Провідника. Закрито вікон: {closed_windows}."
-            )
+        if is_eng:
+            voicing_and_printing_answer(f"Opening {label}.")
         else:
-            voicing_and_printing_answer("Відкритих вікон Провідника не знайшла.")
+            voicing_and_printing_answer(f"Відкриваю {label}.")
 
-    def close_explorer_folder(self, folder_name: str) -> None:
-        folder_name = folder_name.strip().strip("\"'«».,!? ")
-        if not folder_name:
-            voicing_and_printing_answer("Вкажіть папку, яку потрібно закрити.")
-            return
+        def close_explorer(self) -> None:
+            is_eng = getattr(self, "is_english", False)
+            
+            try:
+                closed_windows = close_explorer_windows()
+            except (OSError, RuntimeError, NotImplementedError) as error:
+                if is_eng:
+                    self.stdout.write(f"Error closing File Explorer: {error}")
+                    voicing_and_printing_answer("Failed to close File Explorer windows.")
+                else:
+                    self.stdout.write(self.style.WARNING(f"Помилка закриття Провідника: {error}"))
+                    voicing_and_printing_answer("Не вдалося закрити вікна Провідника.")
+                return
 
-        try:
-            matching_tabs = find_open_explorer_folders(folder_name)
-        except (OSError, RuntimeError, NotImplementedError) as error:
-            self.stdout.write(self.style.WARNING(f"Помилка закриття папки: {error}"))
-            voicing_and_printing_answer("Не вдалося закрити вікно цієї папки.")
-            return
+            if closed_windows:
+                if is_eng:
+                    voicing_and_printing_answer(
+                        f"Closed File Explorer windows. Total windows closed: {closed_windows}."
+                    )
+                else:
+                    voicing_and_printing_answer(
+                        f"Закрила вікна Провідника. Закрито вікон: {closed_windows}."
+                    )
+            else:
+                if is_eng:
+                    voicing_and_printing_answer("No open File Explorer windows found.")
+                else:
+                    voicing_and_printing_answer("Відкритих вікон Провідника не знайшла.")
 
-        if not matching_tabs:
-            voicing_and_printing_answer(
-                f"Не знайшла відкритого вікна папки {folder_name}."
-            )
-            return
 
-        if len(matching_tabs) > 1:
-            self.pending_file = {
-                "awaiting_explorer_close_selection": True,
-                "targets": matching_tabs,
-            }
-            choices = "; ".join(
-                f"{index}. {tab.name} у {tab.path}, вкладка {tab.tab_index + 1}"
-                for index, tab in enumerate(matching_tabs, start=1)
-            )
-            self.stdout.write(f"Відкриті папки: {choices}")
-            voicing_and_printing_answer(
-                "Знайшла кілька відкритих папок. "
-                "Вкажіть номер папки для закриття або скасуйте дію."
-            )
-            return
+        def close_explorer_folder(self, folder_name: str) -> None:
+            folder_name = folder_name.strip().strip("\"'«».,!? ")
+            is_eng = getattr(self, "is_english", False)
 
-        self._close_selected_explorer_folder(matching_tabs[0])
+            if not folder_name:
+                if is_eng:
+                    voicing_and_printing_answer("Please specify the folder you want to close.")
+                else:
+                    voicing_and_printing_answer("Вкажіть папку, яку потрібно закрити.")
+                return
+
+            try:
+                matching_tabs = find_open_explorer_folders(folder_name)
+            except (OSError, RuntimeError, NotImplementedError) as error:
+                if is_eng:
+                    self.stdout.write(self.style.WARNING(f"Folder closing error: {error}"))
+                    voicing_and_printing_answer("Failed to close the window of this folder.")
+                else:
+                    self.stdout.write(self.style.WARNING(f"Помилка закриття папки: {error}"))
+                    voicing_and_printing_answer("Не вдалося закрити вікно цієї папки.")
+                return
+
+            if not matching_tabs:
+                if is_eng:
+                    voicing_and_printing_answer(
+                        f"Could not find an open window for the folder '{folder_name}'."
+                    )
+                else:
+                    voicing_and_printing_answer(
+                        f"Не знайшла відкритого вікна папки {folder_name}."
+                    )
+                return
+
+            if len(matching_tabs) > 1:
+                self.pending_file = {
+                    "awaiting_explorer_close_selection": True,
+                    "targets": matching_tabs,
+                }
+                if is_eng:
+                    choices = "; ".join(
+                        f"{index}. {tab.name} at {tab.path}, tab {tab.tab_index + 1}"
+                        for index, tab in enumerate(matching_tabs, start=1)
+                    )
+                    self.stdout.write(f"Open folders: {choices}")
+                    voicing_and_printing_answer(
+                        "Found multiple open folders. "
+                        "Please specify the folder number to close or cancel the action."
+                    )
+                else:
+                    choices = "; ".join(
+                        f"{index}. {tab.name} у {tab.path}, вкладка {tab.tab_index + 1}"
+                        for index, tab in enumerate(matching_tabs, start=1)
+                    )
+                    self.stdout.write(f"Відкриті папки: {choices}")
+                    voicing_and_printing_answer(
+                        "Знайшла кілька відкритих папок. "
+                        "Вкажіть номер папки для закриття або скасуйте дію."
+                    )
+                return
+
+            self._close_selected_explorer_folder(matching_tabs[0])
 
     def handle_explorer_close_selection(self, text: str) -> None:
         pending_file = self.pending_file
@@ -771,48 +995,88 @@ class Command(BaseCommand):
         self._close_selected_explorer_folder(targets[selected_index])
 
     def _close_selected_explorer_folder(self, tab) -> None:
+        is_eng = getattr(self, "is_english", False)
+        
         try:
             closed = close_explorer_tab(tab)
         except (OSError, RuntimeError, NotImplementedError) as error:
-            self.stdout.write(self.style.WARNING(f"Помилка закриття папки: {error}"))
-            voicing_and_printing_answer("Не вдалося закрити цю вкладку Провідника.")
+            if is_eng:
+                self.stdout.write(self.style.WARNING(f"Folder closing error: {error}"))
+                voicing_and_printing_answer("Failed to close this File Explorer tab.")
+            else:
+                self.stdout.write(self.style.WARNING(f"Помилка закриття папки: {error}"))
+                voicing_and_printing_answer("Не вдалося закрити цю вкладку Провідника.")
             return
 
         if closed:
-            voicing_and_printing_answer(f"Закрила папку {tab.name}.")
+            if is_eng:
+                voicing_and_printing_answer(f"Closed the folder '{tab.name}'.")
+            else:
+                voicing_and_printing_answer(f"Закрила папку {tab.name}.")
         else:
-            voicing_and_printing_answer(
-                "Не знайшла вибрану вкладку Провідника. Повторно надішліть запит."
-            )
+            if is_eng:
+                voicing_and_printing_answer(
+                    "Could not find the selected File Explorer tab. Please resend the request."
+                )
+            else:
+                voicing_and_printing_answer(
+                    "Не знайшла вибрану вкладку Провідника. Повторно надішліть запит."
+                )
 
-    def navigate_explorer_back(self) -> None:
-        try:
-            navigated = navigate_explorer_back()
-        except (OSError, RuntimeError, NotImplementedError) as error:
-            self.stdout.write(self.style.WARNING(f"Помилка переходу назад: {error}"))
-            voicing_and_printing_answer("Не вдалося перейти назад у Провіднику.")
-            return
+        def navigate_explorer_back(self) -> None:
+            is_eng = getattr(self, "is_english", False)
+            
+            try:
+                navigated = navigate_explorer_back()
+            except (OSError, RuntimeError, NotImplementedError) as error:
+                if is_eng:
+                    self.stdout.write(self.style.WARNING(f"Navigation back error: {error}"))
+                    voicing_and_printing_answer("Failed to go back in File Explorer.")
+                else:
+                    self.stdout.write(self.style.WARNING(f"Помилка переходу назад: {error}"))
+                    voicing_and_printing_answer("Не вдалося перейти назад у Провіднику.")
+                return
 
-        if navigated:
-            voicing_and_printing_answer(
-                "Надіслала Провіднику команду перейти до попередньої папки."
-            )
-        else:
-            voicing_and_printing_answer("Не знайшла активного вікна Провідника.")
+            if navigated:
+                if is_eng:
+                    voicing_and_printing_answer(
+                        "Sent a command to File Explorer to navigate to the previous folder."
+                    )
+                else:
+                    voicing_and_printing_answer(
+                        "Надіслала Провіднику команду перейти до попередньої папки."
+                    )
+            else:
+                if is_eng:
+                    voicing_and_printing_answer("Active File Explorer window not found.")
+                else:
+                    voicing_and_printing_answer("Не знайшла активного вікна Провідника.")
 
     def navigate_explorer_forward(self, requested_name: str = "") -> None:
+        is_eng = getattr(self, "is_english", False)
+        
         try:
             folders = get_active_explorer_subfolders()
         except (OSError, RuntimeError, NotImplementedError) as error:
-            self.stdout.write(self.style.WARNING(f"Помилка читання папок: {error}"))
-            voicing_and_printing_answer("Не вдалося прочитати папки у Провіднику.")
+            if is_eng:
+                self.stdout.write(self.style.WARNING(f"Error reading folders: {error}"))
+                voicing_and_printing_answer("Failed to read folders in File Explorer.")
+            else:
+                self.stdout.write(self.style.WARNING(f"Помилка читання папок: {error}"))
+                voicing_and_printing_answer("Не вдалося прочитати папки у Провіднику.")
             return
 
         if folders is None:
-            voicing_and_printing_answer("Не знайшла активного вікна Провідника.")
+            if is_eng:
+                voicing_and_printing_answer("Active File Explorer window not found.")
+            else:
+                voicing_and_printing_answer("Не знайшла активного вікна Провідника.")
             return
         if not folders:
-            voicing_and_printing_answer("У цій папці немає вкладених папок.")
+            if is_eng:
+                voicing_and_printing_answer("There are no subfolders in this folder.")
+            else:
+                voicing_and_printing_answer("У цій папці немає вкладених папок.")
             return
 
         if requested_name:
@@ -825,74 +1089,119 @@ class Command(BaseCommand):
                 return
 
         if len(folders) > 7:
-            if requested_name:
-                voicing_and_printing_answer(
-                    f"Не знайшла папку «{requested_name}». "
-                    "У цій папці більше семи підпапок. Уточніть назву."
-                )
+            if is_eng:
+                if requested_name:
+                    voicing_and_printing_answer(
+                        f"Could not find the folder '{requested_name}'. "
+                        "There are more than seven subfolders here. Please clarify the name."
+                    )
+                else:
+                    voicing_and_printing_answer(
+                        "There are more than seven subfolders here. Please specify a folder."
+                    )
             else:
-                voicing_and_printing_answer(
-                    "У цій папці більше семи підпапок. Вкажіть конкретну папку."
-                )
+                if requested_name:
+                    voicing_and_printing_answer(
+                        f"Не знайшла папку «{requested_name}». "
+                        "У цій папці більше семи підпапок. Уточніть назву."
+                    )
+                else:
+                    voicing_and_printing_answer(
+                        "У цій папці більше семи підпапок. Вкажіть конкретну папку."
+                    )
         else:
             names = "; ".join(
                 f"{index}. {self._explorer_folder_name(path)}"
                 for index, path in enumerate(folders, start=1)
             )
-            self.stdout.write(f"Підпапки: {names}")
-            if requested_name:
-                voicing_and_printing_answer(
-                    f"Не знайшла папку «{requested_name}». "
-                    "Список показано на екран. Вкажіть номер потрібної папки "
-                    "або уточніть назву."
-                )
+            if is_eng:
+                self.stdout.write(f"Subfolders: {names}")
+                if requested_name:
+                    voicing_and_printing_answer(
+                        f"Could not find the folder '{requested_name}'. "
+                        "The list of choices is shown on the screen. Please state the folder number "
+                        "or clarify the name."
+                    )
+                else:
+                    voicing_and_printing_answer(
+                        "Subfolders are shown on the screen. Please specify the folder name "
+                        "or its list number."
+                    )
             else:
-                voicing_and_printing_answer(
-                    "Підпапки виведено на екран. Вкажіть назву папки "
-                    "або номер у списку."
-                )
+                self.stdout.write(f"Підпапки: {names}")
+                if requested_name:
+                    voicing_and_printing_answer(
+                        f"Не знайшла папку «{requested_name}». "
+                        "Список показано на екран. Вкажіть номер потрібної папки "
+                        "або уточніть назву."
+                    )
+                else:
+                    voicing_and_printing_answer(
+                        "Підпапки виведено на екран. Вкажіть назву папки "
+                        "або номер у списку."
+                    )
 
         self.pending_file = {
             "awaiting_explorer_folder_name": True,
             "targets": folders,
         }
 
-    def handle_explorer_folder_name(self, text: str) -> None:
-        pending_file = self.pending_file
-        if pending_file is None:
-            return
+        def handle_explorer_folder_name(self, text: str) -> None:
+            pending_file = self.pending_file
+            if pending_file is None:
+                return
 
-        targets = pending_file["targets"]
-        selected_index = self.find_selection_index(text, len(targets))
-        match = (
-            targets[selected_index]
-            if selected_index is not None
-            else self._match_explorer_folder_name(text, targets)
-        )
-        if match is None:
-            return
+            targets = pending_file["targets"]
+            selected_index = self.find_selection_index(text, len(targets))
+            match = (
+                targets[selected_index]
+                if selected_index is not None
+                else self._match_explorer_folder_name(text, targets)
+            )
+            if match is None:
+                return
 
-        self.pending_file = None
-        try:
-            navigated = navigate_explorer_to(match)
-        except (OSError, RuntimeError, NotImplementedError) as error:
-            self.stdout.write(
-                self.style.WARNING(f"Помилка переходу до папки: {error}")
-            )
-            voicing_and_printing_answer(
-                "Не вдалося перейти до цієї папки у поточному вікні."
-            )
-            return
+            self.pending_file = None
+            is_eng = getattr(self, "is_english", False)
 
-        if navigated:
-            voicing_and_printing_answer(
-                "Перейшла до папки "
-                f"{self._explorer_folder_name(match)} у поточному вікні."
-            )
-        else:
-            voicing_and_printing_answer("Не знайшла активного вікна Провідника.")
+            try:
+                navigated = navigate_explorer_to(match)
+            except (OSError, RuntimeError, NotImplementedError) as error:
+                if is_eng:
+                    self.stdout.write(
+                        self.style.WARNING(f"Folder navigation error: {error}")
+                    )
+                    voicing_and_printing_answer(
+                        "Failed to navigate to this folder in the current window."
+                    )
+                else:
+                    self.stdout.write(
+                        self.style.WARNING(f"Помилка переходу до папки: {error}")
+                    )
+                    voicing_and_printing_answer(
+                        "Не вдалося перейти до цієї папки у поточному вікні."
+                    )
+                return
+
+            if navigated:
+                if is_eng:
+                    voicing_and_printing_answer(
+                        "Navigated to the folder "
+                        f"'{self._explorer_folder_name(match)}' in the current window."
+                    )
+                else:
+                    voicing_and_printing_answer(
+                        "Перейшла до папки "
+                        f"{self._explorer_folder_name(match)} у поточному вікні."
+                    )
+            else:
+                if is_eng:
+                    voicing_and_printing_answer("Active File Explorer window not found.")
+                else:
+                    voicing_and_printing_answer("Не знайшла активного вікна Провідника.")
 
     @staticmethod
+
     def _explorer_folder_name(path: str) -> str:
         trimmed_path = path.rstrip("\\/")
         drive, _tail = os.path.splitdrive(path)
@@ -944,23 +1253,36 @@ class Command(BaseCommand):
 
     def handle_open_close(self, text, is_open):
         match = APP_COMMAND_PATTERN.search(text)
+        is_eng = getattr(self, "is_english", False)
+
         if match is None:
-            voicing_and_printing_answer("Надішліть команду для відкриття або закриття програми.")
+            if is_eng:
+                voicing_and_printing_answer("Please send a command to open or close an application.")
+            else:
+                voicing_and_printing_answer("Надішліть команду для відкриття або закриття програми.")
             return
 
         target_word = text[match.end():].strip(" \t.,!?")
         target_word = GENERIC_APP_PREFIX.sub("", target_word).strip(" \t.,!?")
 
         if not target_word:
-            action = "відкрити" if is_open else "закрити"
             self.pending_app = {
                 "is_open": is_open,
                 "awaiting_name": True,
             }
-            voicing_and_printing_answer(f"Яку програму {action}? Вкажіть назву.")
+            if is_eng:
+                action = "open" if is_open else "close"
+                voicing_and_printing_answer(f"Which application to {action}? Please state the name.")
+            else:
+                action = "відкрити" if is_open else "закрити"
+                voicing_and_printing_answer(f"Яку програму {action}? Вкажіть назву.")
             return
 
-        voicing_and_printing_answer("Починаю шукати програму...")
+        if is_eng:
+            voicing_and_printing_answer("Starting to search for the application...")
+        else:
+            voicing_and_printing_answer("Починаю шукати програму...")
+            
         apps = get_known_apps()
         open_counts = get_app_open_counts(apps.keys())
         exact_match = find_exact_match(
@@ -977,9 +1299,10 @@ class Command(BaseCommand):
                 open_counts=open_counts,
             )
             if not suggestions:
-                voicing_and_printing_answer(
-                    f"Я не знайшла програму схожу на {target_word}"
-                )
+                if is_eng:
+                    voicing_and_printing_answer(f"I couldn't find any application similar to {target_word}.")
+                else:
+                    voicing_and_printing_answer(f"Я не знайшла програму схожу на {target_word}")
                 return
 
             self.pending_app = {
@@ -991,25 +1314,38 @@ class Command(BaseCommand):
                 f"{index}. {name}"
                 for index, (name, _path) in enumerate(suggestions, start=1)
             )
-            self.stdout.write(f"Схожі програми: {options}")
-            run_voice("Ось програми.")
+            
+            if is_eng:
+                self.stdout.write(f"Similar applications: {options}")
+                run_voice("Here are the applications.")
+            else:
+                self.stdout.write(f"Схожі програми: {options}")
+                run_voice("Ось програми.")
             return
 
         name, path = exact_match
-
         is_unknown_app = is_unknown(name=name, path=path)
 
         if is_unknown_app:
-            voicing_and_printing_answer(f"Чи правильно я почув назву? Назва програми: {name}?")
             self.pending_app = {
                 "name": name,
                 "path": path,
                 "is_open": is_open,
             }
+            if is_eng:
+                voicing_and_printing_answer(f"Did I hear the name correctly? Application name: {name}?")
+            else:
+                voicing_and_printing_answer(f"Чи правильно я почув назву? Назва програми: {name}?")
             return
 
-        voicing_and_printing_answer(f"Знайшла програму {name}")
+        if is_eng:
+            voicing_and_printing_answer(f"Found the application {name}.")
+        else:
+            voicing_and_printing_answer(f"Знайшла програму {name}")
+            
         self.execute_app_action(name, path, is_open)
+
+
 
     def handle_app_selection(self, text: str) -> None:
         pending_app = self.pending_app
@@ -1018,28 +1354,43 @@ class Command(BaseCommand):
 
         suggestions = pending_app["suggestions"]
         selected_index = self.find_selection_index(text, len(suggestions))
+        is_eng = getattr(self, "is_english", False)
 
         if selected_index is not None:
             name, path = suggestions[selected_index]
         else:
-            name_query = re.sub(r"\b(?:варіант|номер|пункт)\b|\d+", " ", text, flags=re.IGNORECASE)
+            # Для англійської мови додано виключення слів option, number, item
+            if is_eng:
+                name_query = re.sub(r"\b(?:option|number|item|variant)\b|\d+", " ", text, flags=re.IGNORECASE)
+            else:
+                name_query = re.sub(r"\b(?:варіант|номер|пункт)\b|\d+", " ", text, flags=re.IGNORECASE)
+                
             exact_match = find_exact_match(
                 name_query,
                 dict(suggestions),
                 get_app_open_counts(name for name, _path in suggestions),
             )
             if exact_match is None:
-                voicing_and_printing_answer(
-                    "Не розпізнала вибір. Вкажіть номер однієї з програм у списку "
-                    "або скасуйте дію."
-                )
+                if is_eng:
+                    voicing_and_printing_answer(
+                        "Selection not recognized. Please specify the number of an application from the list "
+                        "or cancel the action."
+                    )
+                else:
+                    voicing_and_printing_answer(
+                        "Не розпізнала вибір. Вкажіть номер однієї з програм у списку "
+                        "або скасуйте дію."
+                    )
                 return
             name, path = exact_match
 
         if selected_index is None:
             is_open = pending_app["is_open"]
             self.pending_app = None
-            voicing_and_printing_answer(f"Вибрано програму {name}.")
+            if is_eng:
+                voicing_and_printing_answer(f"Selected application {name}.")
+            else:
+                voicing_and_printing_answer(f"Вибрано програму {name}.")
             self.execute_app_action(name, path, is_open)
             return
 
@@ -1047,22 +1398,40 @@ class Command(BaseCommand):
         pending_app["awaiting_selection_confirmation"] = True
         pending_app["selected_name"] = name
         pending_app["selected_path"] = path
-        voicing_and_printing_answer(
-            f"Ви обрали {name}. Виконати дію? Підтвердіть дію: так або ні."
-        )
+        
+        if is_eng:
+            voicing_and_printing_answer(
+                f"You selected {name}. Execute action? Confirm action: yes or no."
+            )
+        else:
+            voicing_and_printing_answer(
+                f"Ви обрали {name}. Виконати дію? Підтвердіть дію: так або ні."
+            )
 
     def handle_app_selection_confirmation(self, text: str) -> None:
         pending_app = self.pending_app
         if pending_app is None:
             return
 
-        question = f"Підтвердження вибору програми {pending_app['selected_name']}."
+        is_eng = getattr(self, "is_english", False)
+
+        if is_eng:
+            question = f"Confirmation for selecting application {pending_app['selected_name']}."
+        else:
+            question = f"Підтвердження вибору програми {pending_app['selected_name']}."
+            
         analysis = self.analyze_response(text, question=question)
         if analysis.category == ResponseCategory.UNKNOWN:
-            voicing_and_printing_answer(
-                f"Не зрозуміла відповідь. Виконати дію з програмою "
-                f"{pending_app['selected_name']}? Підтвердіть дію: так або ні."
-            )
+            if is_eng:
+                voicing_and_printing_answer(
+                    f"Response not recognized. Execute action with application "
+                    f"{pending_app['selected_name']}? Confirm action: yes or no."
+                )
+            else:
+                voicing_and_printing_answer(
+                    f"Не зрозуміла відповідь. Виконати дію з програмою "
+                    f"{pending_app['selected_name']}? Підтвердіть дію: так або ні."
+                )
             return
         if analysis.category == ResponseCategory.REJECTION:
             pending_app["awaiting_selection"] = True
@@ -1073,10 +1442,17 @@ class Command(BaseCommand):
                 f"{index}. {name}"
                 for index, (name, _path) in enumerate(pending_app["suggestions"], start=1)
             )
-            self.stdout.write(f"Схожі програми: {options}")
-            voicing_and_printing_answer(
-                "Добре, оберіть інший варіант за номером або назвою."
-            )
+            
+            if is_eng:
+                self.stdout.write(f"Similar applications: {options}")
+                voicing_and_printing_answer(
+                    "Okay, please choose another option by number or name."
+                )
+            else:
+                self.stdout.write(f"Схожі програми: {options}")
+                voicing_and_printing_answer(
+                    "Добре, оберіть інший варіант за номером або назвою."
+                )
             return
         if analysis.category != ResponseCategory.CONFIRMATION:
             return
@@ -1087,17 +1463,29 @@ class Command(BaseCommand):
         self.pending_app = None
         self.execute_app_action(name, path, is_open)
 
+
+
     def execute_app_action(self, name: str, path: str, is_open: bool) -> None:
         command = register_found_app(name=name, path=path)
+        is_eng = getattr(self, "is_english", False)
+        
         if is_open:
-            voicing_and_printing_answer(f"Відкриваю {name}")
+            if is_eng:
+                voicing_and_printing_answer(f"Opening {name}")
+            else:
+                voicing_and_printing_answer(f"Відкриваю {name}")
+                
             if self.open_app(path=path):
                 increment_open_count(command)
         else:
-            voicing_and_printing_answer(f"Закриваю {name}")
+            if is_eng:
+                voicing_and_printing_answer(f"Closing {name}")
+            else:
+                voicing_and_printing_answer(f"Закриваю {name}")
+                
             self.close_app(app_name=path)
-
     def open_app(self, path) -> bool:
+        is_eng = getattr(self, "is_english", False)
         try:
             system = platform.system()
             if system == "Windows":
@@ -1111,18 +1499,25 @@ class Command(BaseCommand):
             else:
                 subprocess.Popen(args=[path])
         except Exception as error:
-            self.stdout.write(self.style.WARNING(f"Помилка відкриття: {error}"))
+            if is_eng:
+                self.stdout.write(self.style.WARNING(f"Opening error: {error}"))
+            else:
+                self.stdout.write(self.style.WARNING(f"Помилка відкриття: {error}"))
             return False
         return True
 
     def close_app(self, app_name: str):
+        is_eng = getattr(self, "is_english", False)
         try:
             system = platform.system()
             if system == "Windows" and app_name.startswith("appx://"):
                 app_id = app_name.removeprefix("appx://")
                 package_family = app_id.partition("!")[0]
                 if not package_family:
-                    raise ValueError("Не вдалося визначити пакет Microsoft Store програми")
+                    if is_eng:
+                        raise ValueError("Failed to determine Microsoft Store application package")
+                    else:
+                        raise ValueError("Не вдалося визначити пакет Microsoft Store програми")
 
                 result = subprocess.run(
                     args=[
@@ -1152,10 +1547,16 @@ class Command(BaseCommand):
                     check=False,
                 )
                 if result.returncode != 0:
-                    message = result.stderr.strip() or "Пакет Microsoft Store не знайдено"
-                    self.stdout.write(
-                        self.style.WARNING(f"Не вдалося закрити Store-програму: {message}")
-                    )
+                    if is_eng:
+                        message = result.stderr.strip() or "Microsoft Store package not found"
+                        self.stdout.write(
+                            self.style.WARNING(f"Failed to close Store application: {message}")
+                        )
+                    else:
+                        message = result.stderr.strip() or "Пакет Microsoft Store не знайдено"
+                        self.stdout.write(
+                            self.style.WARNING(f"Не вдалося закрити Store-програму: {message}")
+                        )
                 return
 
             if system == "Windows" and app_name.casefold().endswith(".lnk"):
@@ -1181,10 +1582,16 @@ class Command(BaseCommand):
                     check=False,
                 )
                 if result.returncode != 0 or not result.stdout.strip():
-                    message = result.stderr.strip() or "Не вдалося прочитати ціль ярлика"
-                    self.stdout.write(
-                        self.style.WARNING(f"Не вдалося визначити процес програми: {message}")
-                    )
+                    if is_eng:
+                        message = result.stderr.strip() or "Failed to read shortcut target"
+                        self.stdout.write(
+                            self.style.WARNING(f"Failed to determine application process: {message}")
+                        )
+                    else:
+                        message = result.stderr.strip() or "Не вдалося прочитати ціль ярлика"
+                        self.stdout.write(
+                            self.style.WARNING(f"Не вдалося визначити процес програми: {message}")
+                        )
                     return
                 app_name = result.stdout.strip()
 
@@ -1208,9 +1615,23 @@ class Command(BaseCommand):
             if result.returncode != 0:
                 message = result.stderr.strip() or result.stdout.strip()
                 if not message:
-                    message = f"Процес {app_name} не знайдено або його не вдалося завершити."
-                self.stdout.write(
-                    self.style.WARNING(f"Не вдалося закрити програму: {message}")
-                )
+                    if is_eng:
+                        message = f"Process {app_name} not found or could not be terminated."
+                    else:
+                        message = f"Процес {app_name} не знайдено або його не вдалося завершити."
+                
+                if is_eng:
+                    self.stdout.write(
+                        self.style.WARNING(f"Failed to close application: {message}")
+                    )
+                else:
+                    self.stdout.write(
+                        self.style.WARNING(f"Не вдалося закрити програму: {message}")
+                    )
         except Exception as error:
-            self.stdout.write(self.style.WARNING(f"Помилка закриття: {error}"))
+            if is_eng:
+                self.stdout.write(self.style.WARNING(f"Closing error: {error}"))
+            else:
+                self.stdout.write(self.style.WARNING(f"Помилка закриття: {error}"))
+
+    

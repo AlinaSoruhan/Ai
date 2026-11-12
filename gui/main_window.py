@@ -492,14 +492,21 @@ class MainWindow(QMainWindow):
         for button in sidebar_buttons:
             button.clicked.connect(lambda _checked=False, selected=button: self._select_sidebar_button(selected, sidebar_buttons))
 
-        # Знизу залишено лише компактний перемикач української та англійської мов.
         layout.addStretch(1)
         language_button = QPushButton("УКР")
         language_button.setObjectName("languageButton")
         language_button.setFixedSize(56, 40)
 
+        # Инициализируем флаг языка по умолчанию (False = УКР)
+        self.is_english = False
+
         def toggle_language() -> None:
-            language_button.setText("ENG" if language_button.text() == "УКР" else "УКР")
+            if language_button.text() == "УКР":
+                language_button.setText("ENG")
+                self.is_english = True
+            else:
+                language_button.setText("УКР")
+                self.is_english = False
 
         language_button.clicked.connect(toggle_language)
         layout.addWidget(language_button, 0, Qt.AlignmentFlag.AlignHCenter)

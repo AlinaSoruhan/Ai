@@ -19,12 +19,27 @@ class DecisionEngine:
         "важко сказати",
         "можливо",
         "мабуть",
+        "not sure",
+        "i'm not sure",
+        "i am not sure",
+        "i don't know",
+        "don't know",
+        "hard to say",
+        "maybe",
+        "perhaps",
+        "probably",
     )
     NEGATION_PHRASES = {
         "та ні",
         "я передумав",
         "не зараз",
         "не сейчас",
+        "oh no",
+        "no way",
+        "i changed my mind",
+        "not now",
+        "never mind",
+        "nevermind",
     }
     PERMISSION_CONFIRMATION_PHRASES = (
         "можеш відкривати",
@@ -35,7 +50,15 @@ class DecisionEngine:
         "можеш запустити",
         "можете запускати",
         "можете запустити",
+        "you can open",
+        "you may open",
+        "go ahead and open",
+        "you can launch",
+        "you can start",
+        "you may start",
+        "go ahead and launch",
     )
+
 
     def __init__(
         self,
